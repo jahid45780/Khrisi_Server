@@ -6,11 +6,30 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 5000;
 
 // middleware
-app.use(cors());
+const corsOptions = {
+  origin: ['http://localhost:5173'],
+  credentials: true,
+  optionSuccessStatus: 200,
+}
+app.use(cors(corsOptions));
 app.use(express.json());
 
 
-
+const verifyToken = async (req, res, next) => {
+  const token = req.cookies?.token
+  console.log(token)
+  if (!token) {
+    return res.status(401).send({ message: 'unauthorized access' })
+  }
+  jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
+    if (err) {
+      console.log(err)
+      return res.status(401).send({ message: 'unauthorized access' })
+    }
+    req.user = decoded
+    next()
+  })
+}
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.d6oiejw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -29,8 +48,8 @@ async function run() {
     await client.connect();
 
     const productCollection = client.db('Bangler_KrisiDB').collection('all_product') 
-
-
+    const usersCollection = client.db('Bangler_KrisiDB').collection('users') 
+     
 
 
      // get all product
@@ -42,13 +61,45 @@ async function run() {
 })
 // product detail
 
-app.get('/detail/:id', async (req, res)=>{
+app.get('/all_product/:id', async (req, res)=>{
   const id = req.params.id
-  console.log(id);
   const result = await productCollection.findOne({_id: new ObjectId(id)})
   res.send(result)
 
 })
+
+// Save user DB
+app.put('/users/:email', async (req, res) => {
+  const email = req.params.email
+  console.log(email);
+  const user = req.body
+  console.log(user);
+  const query = {email: email}
+  const options = {upsert: true}
+  const  isExist = await usersCollection.findOne(query)
+  console.log('User found?----->', isExist)
+  if(isExist) {
+    if(user?.status === 'Requested'){
+        const result = await usersCollection.updateOne(
+          query,
+          {
+            $set:user
+          },
+          options
+        )
+        return res.send(result)
+    } else{
+      return res.send(isExist)
+    }
+  }
+  const result = await usersCollection.updateOne(
+   query,{
+     $set: {...user, timestamp: Date.now()}
+   },
+   options,
+)
+res.send(result)
+ })
 
 
 
