@@ -7,7 +7,7 @@ const port = process.env.PORT || 5000;
 
 // middleware
 const corsOptions = {
-  origin: ['http://localhost:5173'],
+  origin: ['http://localhost:5173', 'http://localhost:5174' ],
   credentials: true,
   optionSuccessStatus: 200,
 }
@@ -45,11 +45,11 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const productCollection = client.db('Bangler_KrisiDB').collection('all_product') 
     const usersCollection = client.db('Bangler_KrisiDB').collection('users') 
-     
+     const addProductCollection = client.db('Bangler_KrisiDB').collection('addProduct')
 
 
      // get all product
@@ -85,7 +85,7 @@ app.put('/users/:email', async (req, res) => {
           {
             $set:user
           },
-          options
+          options 
         )
         return res.send(result)
     } else{
@@ -102,7 +102,25 @@ res.send(result)
  })
 
 
+ //  save a Product a database
+app.post('/addProduct', async (req, res)=>{
+  const product = req.body
+  const result = await addProductCollection .insertOne(product)
+  res.send(result)
+})
 
+// get user product add 
+
+app.get('/addProduct', async (req, res)=>{
+   const result = await addProductCollection. find().toArray()
+   res.send(result)
+})
+
+//  get all user 
+app.get('/users', async (req, res)=>{
+   const result = await usersCollection.find().toArray()
+   res.send(result)
+})
 
 
     // Send a ping to confirm a successful connection
